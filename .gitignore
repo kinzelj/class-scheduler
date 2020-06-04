@@ -1,0 +1,6 @@
+node_modules
+.env
+service
+auth
+client/auth
+client/node_modules
