@@ -24,7 +24,8 @@ const checkJwt = jwt({
 });
 const handleError = function (err, req, res, next) {
   if (err.name === 'UnauthorizedError') {
-    res.status(401).send('Invalid Token');
+    req.error = 'Invalid Token';
+    next();
   }
 };
 
@@ -36,7 +37,7 @@ const getUser = async (id) => {
     return user;
   } else {
     err = {
-      status: 400,
+      status: 404,
       error: 'User not found',
     };
     throw err;
@@ -51,7 +52,7 @@ router.get('/', async (req, res, err) => {
     const queryResult = await datastore.runQuery(query);
     const users = queryResult[0];
     res.set('Content-Type', 'application/json');
-    res.status(201).json(users);
+    res.status(200).json(users);
   } catch (err) {
     return res.status(err.status).send(err.error);
   }
@@ -72,7 +73,7 @@ router.get('/:user_id', checkJwt, handleError, async (req, res, err) => {
       }
       const user = await getUser(sub);
       res.set('Content-Type', 'application/json');
-      res.status(201).json(user);
+      res.status(200).json(user);
     }
   } catch (err) {
     return res.status(err.status).send(err.error);

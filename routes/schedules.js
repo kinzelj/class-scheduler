@@ -133,7 +133,7 @@ const createSchedule = async (owner, data) => {
     }
   } else {
     err = {
-      status: 400,
+      status: 409,
       error: 'Schedule already exists',
     };
     throw err;
@@ -171,7 +171,7 @@ const validateDate = async (schedule, checkDay, checkHour) => {
     //check if any of the days in the class array match the class to add
     if (checkClass.days_of_week.includes(checkDay)) {
       return {
-        status: 400,
+        status: 409,
         error: 'Time slot not available to schedule class',
       };
     }
@@ -189,7 +189,7 @@ const addClass = async (owner, schedule_id, class_id) => {
     for (const id of schedule.classes) {
       if (id === class_id) {
         error = {
-          status: 400,
+          status: 409,
           error: 'Class already in schedule',
         };
       }
@@ -238,18 +238,18 @@ const addClass = async (owner, schedule_id, class_id) => {
 const removeClass = async (owner, schedule_id, class_id) => {
   try {
     //get user schedule
-    const schedule = await getSchedule(owner, schedule_id);
+    let schedule = await getSchedule(owner, schedule_id);
 
     //remove class from classes array
     const class_index = schedule.classes.indexOf(class_id);
-    if (class_index) {
+    if (class_index > -1) {
       schedule.classes.splice(class_index, 1);
     }
 
     //remove schedule from schedules array
-    const classToRemove = await getClass(class_id);
+    let classToRemove = await getClass(class_id);
     const schedule_index = classToRemove.schedules.indexOf(schedule_id);
-    if (schedule_id) {
+    if (schedule_index > -1) {
       classToRemove.schedules.splice(schedule_index, 1);
     }
 
@@ -269,10 +269,68 @@ const removeClass = async (owner, schedule_id, class_id) => {
       console.log(err);
       throw err;
     }
-
   } catch (err) {
     throw err;
   }
+};
+
+const updateSchedule = async (owner, schedule_id, data) => {
+  try {
+    let schedule = await getSchedule(owner, schedule_id);
+
+    //if user is trying to update schedules array, throw error
+    if (data.classes) {
+      throw { status: 400, error: 'Manually updating classes is not allowed' };
+    }
+
+    //update schedule name if included in req body
+    if (data.term) {
+      schedule.term = data.term;
+    }
+
+    try {
+      await datastore.save({
+        key: (key = datastore.key([SCHEDULE, parseInt(schedule_id, 10)])),
+        data: schedule,
+      });
+      schedule = await getSchedule(owner, schedule_id);
+      return schedule;
+    } catch (err) {
+      throw err;
+    }
+  } catch (err) {
+    console.log(err);
+    throw err;
+  }
+};
+
+const deleteSchedule = async (sub, schedule_id) => {
+  const schedule = await getSchedule(sub, schedule_id);
+
+  //remove schedule from all user classes
+  for (const class_id of schedule.classes) {
+    let classEntity = await getClass(class_id);
+    const schedule_index = classEntity.schedules.indexOf(schedule_id);
+    if (schedule_index > -1) {
+      classEntity.schedules.splice(schedule_index, 1);
+
+      //update datastore
+      try {
+        await datastore.update({
+          key: (key = datastore.key([CLASS, parseInt(class_id, 10)])),
+          data: classEntity,
+        });
+      } catch (err) {
+        console.log(err);
+        throw err;
+      }
+    }
+  }
+
+  // delete schedule
+  const schedule_key = datastore.key([SCHEDULE, parseInt(schedule_id, 10)]);
+  await datastore.delete(schedule_key);
+  return;
 };
 
 /************************************ ENDPOINTS ********************************************/
@@ -306,7 +364,6 @@ router.get('/', checkJwt, handleError, async (req, res, err) => {
       }
       const sub = jwtDecode(req.headers.authorization).sub;
       let results = await getSchedules(sub, cursor, 5);
-      console.log(results);
       results.schedules = results.schedules.map((item) => {
         return {
           ...item,
@@ -372,7 +429,7 @@ router.get('/:id/classes', checkJwt, handleError, async (req, res, err) => {
   }
 });
 
-router.patch(
+router.put(
   '/:schedule_id/classes/:class_id',
   checkJwt,
   handleError,
@@ -405,6 +462,29 @@ router.patch(
   }
 );
 
+router.patch('/:id', checkJwt, handleError, async (req, res, err) => {
+  try {
+    if (req.error === 'Invalid Token') {
+      throw { status: 401, error: 'Invalid Token' };
+    } else {
+      const sub = jwtDecode(req.headers.authorization).sub;
+      const updatedSchedule = await updateSchedule(
+        sub,
+        req.params.id,
+        req.body
+      );
+      updatedSchedule.id = req.params.id;
+      updatedSchedule.self = `${req.protocol}://${req.get('host')}${
+        req.baseUrl
+      }/${req.params.id}`;
+      res.set('Content-Type', 'application/json');
+      res.status(200).json(updatedSchedule);
+    }
+  } catch (err) {
+    return res.status(err.status).send(err.error);
+  }
+});
+
 router.delete(
   '/:schedule_id/classes/:class_id',
   checkJwt,
@@ -427,5 +507,16 @@ router.delete(
     }
   }
 );
+
+router.delete('/:id', checkJwt, handleError, async (req, res, err) => {
+  try {
+    const sub = jwtDecode(req.headers.authorization).sub;
+    await deleteSchedule(sub, req.params.id);
+    res.sendStatus(204);
+  } catch (err) {
+    console.log(err);
+    return res.status(err.status).send(err.error);
+  }
+});
 
 module.exports = router;

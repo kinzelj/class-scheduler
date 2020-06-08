@@ -89,7 +89,6 @@ router.get('/callback', async (req, res, next) => {
             //add new user if user with user_id does not exist in database
             if (!user) {
               const newUser = await createNewUser(sub, email, given_name, family_name);
-              console.log(newUser);
             }
             res.redirect(`https://localhost:3000/info?token=${jwt}`);
           }
