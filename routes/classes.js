@@ -272,6 +272,9 @@ const getAllSchedules = async () => {
 };
 
 const deleteClass = async (class_id) => {
+  //confirm class exists, 404 will be thrown if not
+  await getClass(class_id);
+  
   //remove class from all schedules
   const scheduleEntities = await getAllSchedules();
   const schedules = scheduleEntities[0];
