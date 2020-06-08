@@ -171,7 +171,7 @@ const createClass = async (data) => {
     }
   } else {
     err = {
-      status: 409,
+      status: 403,
       error: 'Class/section already exists',
     };
     throw err;
@@ -250,7 +250,7 @@ const updateClass = async (class_id, data) => {
       }
     } else {
       err = {
-        status: 409,
+        status: 403,
         error: 'Class/section already exists',
       };
       throw err;

@@ -133,7 +133,7 @@ const createSchedule = async (owner, data) => {
     }
   } else {
     err = {
-      status: 409,
+      status: 403,
       error: 'Schedule already exists',
     };
     throw err;
@@ -171,7 +171,7 @@ const validateDate = async (schedule, checkDay, checkHour) => {
     //check if any of the days in the class array match the class to add
     if (checkClass.days_of_week.includes(checkDay)) {
       return {
-        status: 409,
+        status: 403,
         error: 'Time slot not available to schedule class',
       };
     }
@@ -189,7 +189,7 @@ const addClass = async (owner, schedule_id, class_id) => {
     for (const id of schedule.classes) {
       if (id === class_id) {
         error = {
-          status: 409,
+          status: 403,
           error: 'Class already in schedule',
         };
       }
