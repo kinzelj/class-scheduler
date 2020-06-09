@@ -94,7 +94,7 @@ const getSchedule = async (owner, id) => {
 const createSchedule = async (owner, data) => {
   //validate input
   let err = null;
-  if (!data.term) {
+  if (!data.term || !data.start || !data.end) {
     err = {
       status: 400,
       error:
@@ -121,6 +121,8 @@ const createSchedule = async (owner, data) => {
         data: {
           owner: owner,
           term: data.term,
+          start: data.start,
+          end: data.end,
           classes: [],
         },
       });
@@ -283,22 +285,47 @@ const updateSchedule = async (owner, schedule_id, data) => {
       throw { status: 400, error: 'Manually updating classes is not allowed' };
     }
 
-    //update schedule name if included in req body
+    //update schedule properties if included in req body
+    let existingSchedule = null;
     if (data.term) {
+      //check to make sure term schedule doesn't already exist
+      const query = datastore
+        .createQuery(SCHEDULE)
+        .filter('owner', '=', owner)
+        .filter('term', '=', data.term);
+      const queryResult = await datastore.runQuery(query);
+      existingSchedule = queryResult[0][0];
       schedule.term = data.term;
     }
+    if (data.start) {
+      schedule.start = data.start;
+    }
+    if (data.end) {
+      schedule.end = data.end;
+    }
 
-    try {
-      await datastore.save({
-        key: (key = datastore.key([SCHEDULE, parseInt(schedule_id, 10)])),
-        data: schedule,
-      });
-      schedule = await getSchedule(owner, schedule_id);
-      return schedule;
-    } catch (err) {
+    if (!existingSchedule) {
+      try {
+        await datastore.save({
+          key: (key = datastore.key([SCHEDULE, parseInt(schedule_id, 10)])),
+          data: schedule,
+        });
+        schedule = await getSchedule(owner, schedule_id);
+        return schedule;
+      } catch (err) {
+        console.log(err);
+        throw err;
+      }
+    }
+    else {
+      err = {
+        status: 403,
+        error: 'Schedule already exists',
+      };
       throw err;
     }
-  } catch (err) {
+  }
+  catch (err) {
     console.log(err);
     throw err;
   }
@@ -336,7 +363,13 @@ const deleteSchedule = async (sub, schedule_id) => {
 /************************************ ENDPOINTS ********************************************/
 
 router.post('/', checkJwt, handleError, async (req, res, err) => {
-  try {
+  //accept header must be json
+  const accepts = req.accepts(['application/json']);
+  if (!accepts) {
+    res.sendStatus(406);
+    return;
+  }
+  else try {
     if (req.error === 'Invalid Token') {
       throw { status: 401, error: 'Invalid Token' };
     } else {
@@ -345,7 +378,7 @@ router.post('/', checkJwt, handleError, async (req, res, err) => {
       newSchedule.id = getId(newSchedule);
       newSchedule.self = `${req.protocol}://${req.get('host')}${req.baseUrl}/${
         newSchedule.id
-      }`;
+        }`;
       res.status(201).json(newSchedule);
     }
   } catch (err) {
@@ -354,7 +387,13 @@ router.post('/', checkJwt, handleError, async (req, res, err) => {
 });
 
 router.get('/', checkJwt, handleError, async (req, res, err) => {
-  try {
+  //accept header must be json
+  const accepts = req.accepts(['application/json']);
+  if (!accepts) {
+    res.sendStatus(406);
+    return;
+  }
+  else try {
     if (req.error === 'Invalid Token') {
       throw { status: 401, error: 'Invalid Token' };
     } else {
@@ -373,7 +412,7 @@ router.get('/', checkJwt, handleError, async (req, res, err) => {
       if (results.next) {
         results.next = `${req.protocol}://${req.get('host')}${
           req.baseUrl
-        }?cursor=${results.next}`;
+          }?cursor=${results.next}`;
       }
 
       res.status(200).json(results);
@@ -384,7 +423,13 @@ router.get('/', checkJwt, handleError, async (req, res, err) => {
 });
 
 router.get('/:id', checkJwt, handleError, async (req, res, err) => {
-  try {
+  //accept header must be json
+  const accepts = req.accepts(['application/json']);
+  if (!accepts) {
+    res.sendStatus(406);
+    return;
+  }
+  else try {
     if (req.error === 'Invalid Token') {
       throw { status: 401, error: 'Invalid Token' };
     } else {
@@ -393,7 +438,7 @@ router.get('/:id', checkJwt, handleError, async (req, res, err) => {
       returnSchedule.id = req.params.id;
       returnSchedule.self = `${req.protocol}://${req.get('host')}${
         req.baseUrl
-      }/${req.params.id}`;
+        }/${req.params.id}`;
       res.set('Content-Type', 'application/json');
       res.status(200).json(returnSchedule);
     }
@@ -403,7 +448,13 @@ router.get('/:id', checkJwt, handleError, async (req, res, err) => {
 });
 
 router.get('/:id/classes', checkJwt, handleError, async (req, res, err) => {
-  try {
+  //accept header must be json
+  const accepts = req.accepts(['application/json']);
+  if (!accepts) {
+    res.sendStatus(406);
+    return;
+  }
+  else try {
     if (req.error === 'Invalid Token') {
       throw { status: 401, error: 'Invalid Token' };
     } else {
@@ -434,7 +485,14 @@ router.put(
   checkJwt,
   handleError,
   async (req, res, err) => {
-    try {
+    console.log('test');
+    //accept header must be json
+    const accepts = req.accepts(['application/json']);
+    if (!accepts) {
+      res.sendStatus(406);
+      return;
+    }
+    else try {
       if (req.error === 'Invalid Token') {
         throw { status: 401, error: 'Invalid Token' };
       } else {
@@ -446,10 +504,10 @@ router.put(
             req.params.class_id
           );
           const schedule = await getSchedule(sub, req.params.schedule_id);
-          schedule.id = req.params.id;
+          schedule.id = req.params.schedule_id;
           schedule.self = `${req.protocol}://${req.get('host')}${req.baseUrl}/${
             req.params.schedule_id
-          }`;
+            }`;
           res.set('Content-Type', 'application/json');
           res.status(200).json(schedule);
         } catch (err) {
@@ -463,7 +521,13 @@ router.put(
 );
 
 router.patch('/:id', checkJwt, handleError, async (req, res, err) => {
-  try {
+  //accept header must be json
+  const accepts = req.accepts(['application/json']);
+  if (!accepts) {
+    res.sendStatus(406);
+    return;
+  }
+  else try {
     if (req.error === 'Invalid Token') {
       throw { status: 401, error: 'Invalid Token' };
     } else {
@@ -476,7 +540,7 @@ router.patch('/:id', checkJwt, handleError, async (req, res, err) => {
       updatedSchedule.id = req.params.id;
       updatedSchedule.self = `${req.protocol}://${req.get('host')}${
         req.baseUrl
-      }/${req.params.id}`;
+        }/${req.params.id}`;
       res.set('Content-Type', 'application/json');
       res.status(200).json(updatedSchedule);
     }
@@ -510,9 +574,13 @@ router.delete(
 
 router.delete('/:id', checkJwt, handleError, async (req, res, err) => {
   try {
-    const sub = jwtDecode(req.headers.authorization).sub;
-    await deleteSchedule(sub, req.params.id);
-    res.sendStatus(204);
+    if (req.error === 'Invalid Token') {
+      throw { status: 401, error: 'Invalid Token' };
+    } else {
+      const sub = jwtDecode(req.headers.authorization).sub;
+      await deleteSchedule(sub, req.params.id);
+      res.sendStatus(204);
+    }
   } catch (err) {
     console.log(err);
     return res.status(err.status).send(err.error);

@@ -308,7 +308,13 @@ const deleteClass = async (class_id) => {
 /************************************ ENDPOINTS ********************************************/
 
 router.post('/', checkJwt, handleError, async (req, res, err) => {
-  try {
+  //accept header must be json
+  const accepts = req.accepts(['application/json']);
+  if (!accepts) {
+      res.sendStatus(406);
+      return;
+  }
+  else try {
     if (req.error === 'Invalid Token') {
       throw { status: 401, error: 'Invalid Token' };
     } else {
@@ -326,7 +332,13 @@ router.post('/', checkJwt, handleError, async (req, res, err) => {
 });
 
 router.get('/', async (req, res, err) => {
-  try {
+  //accept header must be json
+  const accepts = req.accepts(['application/json']);
+  if (!accepts) {
+      res.sendStatus(406);
+      return;
+  }
+  else try {
     let cursor = null;
     if (Object.keys(req.query).includes('cursor')) {
       cursor = req._parsedUrl.path.slice(9);
@@ -350,7 +362,13 @@ router.get('/', async (req, res, err) => {
 });
 
 router.get('/:id', async (req, res, err) => {
-  try {
+  //accept header must be json
+  const accepts = req.accepts(['application/json']);
+  if (!accepts) {
+      res.sendStatus(406);
+      return;
+  }
+  else try {
     const returnClass = await getClass(req.params.id);
     returnClass.id = req.params.id;
     returnClass.self = `${req.protocol}://${req.get('host')}${req.baseUrl}/${
@@ -364,7 +382,13 @@ router.get('/:id', async (req, res, err) => {
 });
 
 router.patch('/:id', checkJwt, handleError, async (req, res, err) => {
-  try {
+  //accept header must be json
+  const accepts = req.accepts(['application/json']);
+  if (!accepts) {
+      res.sendStatus(406);
+      return;
+  }
+  else try {
     if (req.error === 'Invalid Token') {
       throw { status: 401, error: 'Invalid Token' };
     } else {
@@ -394,5 +418,7 @@ router.delete('/:id', checkJwt, handleError, async (req, res, err) => {
     return res.status(err.status).send(err.error);
   }
 });
+
+router.put('/', (req, res, next) => { res.sendStatus(405) })
 
 module.exports = router;

@@ -47,19 +47,31 @@ const getUser = async (id) => {
 /************************************ ENDPOINTS ********************************************/
 
 router.get('/', async (req, res, err) => {
-  try {
+  //accept header must be json
+  const accepts = req.accepts(['application/json']);
+  if (!accepts) {
+      res.sendStatus(406);
+      return;
+  }
+  else try {
     const query = datastore.createQuery(USER);
     const queryResult = await datastore.runQuery(query);
     const users = queryResult[0];
     res.set('Content-Type', 'application/json');
-    res.status(200).json(users);
+    res.status(200).json({"users": users});
   } catch (err) {
     return res.status(err.status).send(err.error);
   }
 });
 
 router.get('/:user_id', checkJwt, handleError, async (req, res, err) => {
-  try {
+  //accept header must be json
+  const accepts = req.accepts(['application/json']);
+  if (!accepts) {
+      res.sendStatus(406);
+      return;
+  }
+  else try {
     if (req.error === 'Invalid Token') {
       throw { status: 401, error: 'Invalid Token' };
     } else {
@@ -79,5 +91,11 @@ router.get('/:user_id', checkJwt, handleError, async (req, res, err) => {
     return res.status(err.status).send(err.error);
   }
 });
+
+
+router.post('/', (req, res, next) => { res.sendStatus(405) })
+router.patch('/', (req, res, next) => { res.sendStatus(405) })
+router.put('/', (req, res, next) => { res.sendStatus(405) })
+router.delete('/', (req, res, next) => { res.sendStatus(405) })
 
 module.exports = router;

@@ -22,7 +22,7 @@ export default function Welcome() {
         return (
             <div className="welcome">
                 <h1>WELCOME</h1>
-                <p><strong>Page Description:</strong> This webpage authenticates a user using Google OAuth API and provides a signed JWT required for API requests. 
+                <p>This webpage authenticates a user using Google OAuth API and provides a signed JWT required for API requests. 
                 <br></br>Click the button below to sign-in and authorize the client server:</p>
                 <div>
                     <form className="ui form">

@@ -4,3 +4,4 @@ service
 auth
 client/auth
 client/node_modules
+client/package.json
