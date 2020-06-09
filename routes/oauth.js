@@ -90,7 +90,7 @@ router.get('/callback', async (req, res, next) => {
             if (!user) {
               const newUser = await createNewUser(sub, email, given_name, family_name);
             }
-            res.redirect(`https://localhost:3000/info?token=${jwt}`);
+            res.redirect(`https://cs493-finalproject-kinzelj.uk.r.appspot.com/info?token=${jwt}`);
           }
         );
       } catch (err) {
